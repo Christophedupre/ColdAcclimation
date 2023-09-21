@@ -1,0 +1,357 @@
+function AcclimationPersistence(Deacclimation, JustPCR, NoPCR)
+
+FigurePosition = [452 301 700 300];
+figGeneral = figure('Name','Acclimation Persistence','WindowState','maximized','Renderer','opengl');
+fig5 = figure('Name', 'Health index over time, animal by animal', 'renderer', 'painters', 'units','normalized','outerposition',[0 0 1 1], 'WindowState','maximized');
+cmapturbo = colormap("turbo");
+cmaplines = colormap("lines");
+% cmap2 = colormap('jet');
+load("cmaplist.mat");
+
+%%% GENERAL FIGURE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+figure(figGeneral)
+tiledlayout(4,5)
+
+%%% DEACCLIMATION CARTOON %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nexttile(); hold on;
+% Xtraining = [linspace(0,3,4) linspace(3,14,11) linspace(14,14,1)];
+% Xtesting = linspace(14,43,29);
+% Ytraining = [linspace(4,4,4) linspace(22,22,11) linspace(4,4,1)];
+% Ytesting = linspace(4,4,length(Xtesting));
+% plot(Xtraining, Ytraining, 'Color',cmaplines(1,:), 'LineWidth',2, LineStyle=':');
+% plot(Xtesting, Ytesting, 'Color',cmaplines(2,:), 'LineWidth',2)
+% 
+% ax = gca; ax.LineWidth = 1; ax.FontSize = 10; ax.YLim = [0 22]; ax.YTick = [4 22]; 
+% ax.YTickLabel = {'4';'22'};ax.XLim = [0 28]; ax.XTick = [3 14 28]; ax.XTickLabel = {'0'; 'D'; 'D+28'};
+% text(ax.XLim(2)*0.05,ax.YLim(2)*0.9,{'Deacclimation'}, 'BackgroundColor', [1 1 1 0.75]);
+% text(-0.2*mean(ax.XLim), mean(ax.YLim) , ['T (' char(176) 'C)'], 'HorizontalAlignment','center','Rotation',90);
+% text(mean(ax.XLim), -0.5*mean(ax.YLim) ,'T (days)', 'HorizontalAlignment','center');
+% text(ax.XLim(1),ax.YLim(2)*1.15, 'A', 'FontSize', 14);
+
+nexttile(); hold on;
+cmapturbo = colormap('turbo');
+cmaplines = colormap('lines');
+StepDuration = (2:6:28);
+for i = 1:length(StepDuration)
+    plot([-40 -34 -34 -20 -20 0 0 StepDuration(i) StepDuration(i)], [22 22 12 12 4 4 22 22 4]+i/3,'Color',cmapturbo(round(256/length(StepDuration)*i),:),'LineWidth',1)    
+    plot([StepDuration(i) 56], [4 4]+i/3,'Color',cmapturbo(round(256/length(StepDuration)*i),:),'LineWidth',1, 'LineStyle','--');    
+end
+ax = gca; ax.XLabel.String = 'Time (Days)'; ax.YLabel.String = 'T (C)';
+ax.LineWidth = 1; ax.YLim = [0 28];
+% ax.YLim = [0 22]; ax.YTick = [4 22]; 
+ax.XTick = [-40:20:60]; ax.FontSize = 10; ax.XLim = [-40 56]; ax.XTickLabel = [{'0'},{'20'},{'0'},{'20'},{'40'},{'60'}];
+% ax.Title.String = 'A';
+
+%%% HEATMAP %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+nexttile()
+Deacclimation = [Deacclimation; JustPCR(1:28,:)'; NoPCR(1:28,:)' ];
+DeacclHM = Deacclimation;
+DeacclHM = [DeacclHM(1:28,:); nan(1,28); DeacclHM(29:end,:)]; %For Heatmap. Add a black line to separate naive animals
+h = heatmap(DeacclHM(1:36,:));
+h.ColorbarVisible = 'off'; h.XLabel = 'Testing Time (Days)'; h.YLabel = 'Training Duration';
+h.XDisplayLabels(:) = {''}; h.YDisplayLabels(:) = {''}; h.FontSize = 8;
+h.XDisplayLabels([1 10 20]) = {'1', '10', '20'};
+h.YDisplayLabels([1 10 20 29]) = {'1', '10', '20', '\infty'};
+
+% h.Title = 'B';
+colormap(cmaplist.cmapRedBlue1);
+%%% EXAMPLE CURVES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+nexttile(); hold on;
+ExampleCurves = Deacclimation([1:10:28 34],:);
+ExampleCurves = ExampleCurves + rand(size(ExampleCurves,1), size(ExampleCurves,2))./10;
+Time = repmat(1:1:28,size(ExampleCurves,1),1); %Time = Time + (rand(size(Time,1),size(Time,2))-0.5)/1;
+% p = plot(1:1:28,ExampleCurves, 'Color',cmaplines(1,:),'LineWidth',1);
+for i = 1:size(ExampleCurves,1)    
+    s = scatter(Time(i,:),ExampleCurves(i,:), 'filled', 'MarkerFaceColor', cmapturbo(round(256/size(ExampleCurves,1)*i),:),'SizeData', 5);
+    p = plot(Time(i,:), ExampleCurves(i,:),'Color',cmapturbo(round(256/size(ExampleCurves,1)*i),:),'LineWidth',0.5);
+end
+% s = scatter(Time,ExampleCurves, 'filled', 'MarkerFaceColor', cmaplines(1,:),...
+%         'SizeData', 5);
+ax = gca; ax.Box = 'off';
+ax.XLabel.String = 'Testing Time (Days)';
+ax.YLabel.String = 'Health';
+ax.LineWidth = 2;
+
+% %%% FIT PERSISTENCE USING FLORIAN'S EQUATION %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nexttile()
+% hold on;
+% ad = []; taud = []; ar = []; taur = []; of = [];
+% ptot = [];
+% 
+% Naives = [Deacclimation(29:34,:); JustPCR(1:28,:)'; NoPCR(1:28,:)'];
+% 
+% % bins of size 5, with animal 26
+% HealthPooledAverage = [mean(Deacclimation(2:5,:)); mean(Deacclimation(6:10,:)); mean(Deacclimation(11:15,:));...)
+%     mean(Deacclimation(16:20,:)); mean(Deacclimation(21:28,:));mean(Deacclimation(29:36,:))];
+% HealthPooledSEM = [std(Deacclimation(2:5,:))./sqrt(4); std(Deacclimation(6:10,:))./sqrt(5);...
+%     std(Deacclimation(11:15,:))./sqrt(5); std(Deacclimation(16:20,:))./sqrt(5);...
+%     std(Deacclimation(21:28,:))./sqrt(8);std(Deacclimation(29:36,:))./sqrt(8)];
+% 
+% TimeHealth = 0:1:27;
+% TimeSEM = [TimeHealth fliplr(TimeHealth)];
+% inBetweenSEM = [HealthPooledAverage + HealthPooledSEM fliplr(HealthPooledAverage - HealthPooledSEM)];
+% 
+% for i=1:size(HealthPooledAverage,1)
+%     fill(TimeSEM, inBetweenSEM(i,:), cmapturbo(floor(256/6*i),:), 'FaceAlpha', 0.5, 'EdgeColor', 'none');    
+%     plot(TimeHealth, HealthPooledAverage(i,:), 'Color', cmapturbo(floor(256/6*i),:));
+% %     insert curve fitting here
+%     [xData, yData] = prepareCurveData( TimeHealth, HealthPooledAverage(i,:) );
+%     ft = fittype( '1*exp(-x/taud)+ar./(1+exp(-(x-of)/taur))', 'independent', 'x', 'dependent', 'y' );
+%     opts = fitoptions( 'Method', 'NonlinearLeastSquares' );
+%     opts.StartPoint = [3.3707 22 4 0.2 ]; % [ar of taud taur]
+%     opts.Upper = [5 inf inf inf];
+%     opts.Lower = [0 1 1 1];
+% %     opts.Lower = [0 0 0 0];
+%     [fitresult, gof] = fit( xData, yData, ft, opts );
+%     ad = [ad 5]; taud = [taud fitresult.taud]; ar = [ar fitresult.ar]; taur = [taur fitresult.taur]; of = [of fitresult.of];
+%     p2 = plot(xData,feval(fitresult,xData),'color',cmapturbo(floor(256/6*i),:),'LineWidth',2);
+%     ptot = [ptot p2];
+% %     pause()
+% end
+% 
+% yticks([0 1 2 3 4 5]/5);
+% xlabel('Time after return to cold (days)')
+% ylabel('Health')
+% ax = gca; ax.LineWidth = 1.5; ax.FontSize = 10; ax.XLim(2) = 35; ax.YLim = [0 1.2];
+% ax.Color = 'none';
+% text(ax.XLim(1),ax.YLim(2)*1.15, 'C', 'FontSize', 14);
+% 
+% 
+% dim = [.30 .8 .27 .08];
+% str = 'Fit: $\overbrace{1\cdot e^{\frac{-x}{\tau_d}}}^{decay}+\overbrace{\frac{a_r}{1+e^{-\frac{x-of}{\tau_r}}}}^{recovery} $';
+% text(5,1.25,str,'Interpreter','latex')
+% legendFittedCurves = {'1-5','6-10','11-15','16-20','21-28','Naive'};
+% lgd1 = legend(ptot, legendFittedCurves,'Box','off', 'FontSize', 8);
+% lgd1.Location = 'east';
+% lgd1.Position(1) = lgd1.Position(1) + 0.03;
+% lgd1.Position(3) = lgd1.Position(3) - 0.03;
+% lgd1.Position(4) = lgd1.Position(4) + 0.04;
+% lgd1.Title.String = 'T_{RT} (d)';
+% 
+% % %%% JUST COMPARE NAIVE VS ACCLIMATED ANIMALS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % nexttile()
+% % hold on;
+% % TimeHealth = 0:1:27; TimeSEM = [TimeHealth fliplr(TimeHealth)];
+% % fill(TimeSEM, inBetweenSEM(6,:), cmapturbo(floor(256/6*6),:), 'FaceAlpha', 0.5, 'EdgeColor', 'w');
+% % p1 = plot(TimeHealth, HealthPooledAverage(6,:), 'Color', cmapturbo(floor(256/6*6),:), 'LineWidth', 2);
+% % fill(TimeSEM, inBetweenSEM(1,:), cmapturbo(floor(256/6*1),:), 'FaceAlpha', 0.5, 'EdgeColor', 'w');
+% % p2 = plot(TimeHealth, HealthPooledAverage(1,:), 'Color', cmapturbo(floor(256/6*1),:), 'LineWidth', 2);
+% % 
+% % legend([p1 p2] ,'Naive', 'Acclimated', 'box', 'off','Location','east');
+% % 
+% % ylim([0 1.2]); yticks([0 1 2 3 4 5]/5); xlabel('Time at 4C (days)');
+% % ylabel('Health'); box('off')
+% % ax = gca; ax.LineWidth = 1.5; ax.FontSize = 10; ax.XLim(2) = 35;
+% 
+% %%% COMPARE BETWEEN ABRUPT TRANSITION AND T_EXP>20 %%%%%%%%%%%%%%%%%%%%%%%%
+% nexttile()
+% HealthDay14TexpBelow6 = Deacclimation(1:5,14);
+% HealthDay14TexpOver20 = Deacclimation(21:28,14);
+% HealthDay14Naive = Deacclimation(29:36,14);
+% 
+% 
+% HealthData = [HealthDay14TexpBelow6' HealthDay14TexpOver20' HealthDay14Naive'];
+% xpos = [linspace(1,1,length(HealthDay14TexpBelow6)) linspace(2,2,length(HealthDay14TexpOver20)) linspace(3,3,length(HealthDay14Naive))];
+% s1 = scatter(xpos,HealthData,'filled', 'MarkerFaceColor', 'k',...
+%         'SizeData', 25, 'jitter','on', 'jitterAmount',0.15);
+% 
+% [t1 p1] = ttest2(HealthDay14TexpBelow6, HealthDay14TexpOver20);
+% [t2 p2] = ttest2(HealthDay14TexpOver20, HealthDay14Naive);
+% disp(['P-Value of below6 vs over 20 = ' num2str(p1)])
+% disp(['P-Value of over 20 vs naive = ' num2str(p2)])
+% line([1.1 1.9], [1.1 1.1],'Color',[0 0 0], 'LineWidth',1.5);
+% text(1.36,1.17,'***');
+% line([2.1 2.9], [1.1 1.1],'Color',[0 0 0], 'LineWidth',1.5);
+% text(2.45,1.17,'*');
+% 
+% ax = gca;
+% ax.XLim = [0 4]; ax.XTick = 0:1:4; ax.XTickLabel = {'','1-5','21-28','Naive',''};
+% ax.YLim = [0 1.2]; ax.YLabel.String = 'Health at day 14';
+% ax.XLabel.String = 'D';
+% ax.LineWidth = 1.5; ax.FontSize = 10;
+% text(ax.XLim(1),ax.YLim(2)*1.15, 'D', 'FontSize', 14);
+
+
+
+
+
+
+% nexttile()
+% HealthDay1TexpOver25 = Deacclimation(26:28,1);
+% HealthDay14TexpOver25 = Deacclimation(26:28,14);
+% HealthDay1TexpBelow6 = Deacclimation(1:6,1);
+% HealthDay14TexpBelow6 = Deacclimation(1:6,14);
+% HealthDay1Naive = Deacclimation(29:end,1);
+% HealthDay14Naive = Deacclimation(29:end,14);
+% xticksval = [];
+% 
+% %T_EXP<7
+% xpos = 0; xticksval = [xticksval xpos];
+% errorbar(xpos,mean(HealthDay1TexpBelow6(:,1)),std(HealthDay1TexpBelow6(:,1))/sqrt(size(HealthDay1TexpBelow6,1)),std(HealthDay1TexpBelow6(:,1))/sqrt(size(HealthDay1TexpBelow6,1)),'Color', 'k','Linewidth',1)
+% hold on;
+% bar(xpos,mean(HealthDay1TexpBelow6(:,1)),0.2, 'FaceColor', 'k', 'FaceAlpha',0.2, 'EdgeColor', 'w');
+% XValuesScatter1 = ones(size(HealthDay1TexpBelow6,1),1)*xpos+(rand(size(HealthDay1TexpBelow6,1),1)-0.5)./10;
+% plot(XValuesScatter1,HealthDay1TexpBelow6, 'o','MarkerFaceColor',cmaplines(1,:),'MarkerEdgeColor','none');
+% text(xpos+0.1,1.2, ['T_{RT}<6'], 'FontSize', 10);
+% text(xpos+0.17,1.1, ['n = ' num2str(length(HealthDay1TexpBelow6))], 'FontSize', 10);
+% 
+% xpos = 0.5; xticksval = [xticksval xpos];
+% errorbar(xpos,mean(HealthDay14TexpBelow6(:,1)),std(HealthDay14TexpBelow6(:,1))/sqrt(size(HealthDay14TexpBelow6,1)),std(HealthDay14TexpBelow6(:,1))/sqrt(size(HealthDay14TexpBelow6,1)),'Color', 'k','Linewidth',1)
+% hold on;
+% bar(xpos,mean(HealthDay14TexpBelow6(:,1)),0.2, 'FaceColor', 'k', 'FaceAlpha',0.2, 'EdgeColor', 'w');
+% XValuesScatter14 = ones(size(HealthDay14TexpBelow6,1),1)*xpos+(rand(size(HealthDay14TexpBelow6,1),1)-0.5)./10;
+% plot(XValuesScatter14,HealthDay14TexpBelow6, 'o','MarkerFaceColor',cmaplines(1,:),'MarkerEdgeColor','none');
+% line([XValuesScatter1, XValuesScatter14]', [HealthDay1TexpBelow6(:,1), HealthDay14TexpBelow6(:,1)]', 'color', [0.30,0.30,0.30]);
+% 
+% %T_EXP>25
+% xpos = 1.5; xticksval = [xticksval xpos];
+% errorbar(xpos,mean(HealthDay1TexpOver25(:,1)),std(HealthDay1TexpOver25(:,1))/sqrt(size(HealthDay1TexpOver25,1)),std(HealthDay1TexpOver25(:,1))/sqrt(size(HealthDay1TexpOver25,1)),'Color', 'k','Linewidth',1)
+% hold on;
+% bar(xpos,mean(HealthDay1TexpOver25(:,1)),0.2, 'FaceColor', 'k', 'FaceAlpha',0.2, 'EdgeColor', 'w');
+% XValuesScatter1 = ones(size(HealthDay1TexpOver25,1),1)+0.5+(rand(size(HealthDay1TexpOver25,1),1)-0.5)./10;
+% plot(XValuesScatter1,HealthDay1TexpOver25, 'o','MarkerFaceColor',cmaplines(1,:),'MarkerEdgeColor','none');
+% text(xpos+0.1,1.2, ['T_{RT}>25'], 'FontSize', 10);
+% text(xpos+0.18,1.1, ['n = ' num2str(length(HealthDay1TexpOver25))], 'FontSize', 10);
+% 
+% xpos = 2; xticksval = [xticksval xpos];
+% errorbar(xpos,mean(HealthDay14TexpOver25(:,1)),std(HealthDay14TexpOver25(:,1))/sqrt(size(HealthDay14TexpOver25,1)),std(HealthDay14TexpOver25(:,1))/sqrt(size(HealthDay14TexpOver25,1)),'Color','k','Linewidth',1)
+% hold on;
+% bar(xpos,mean(HealthDay14TexpOver25(:,1)),0.2, 'FaceColor', 'k', 'FaceAlpha',0.2, 'EdgeColor', 'w');
+% XValuesScatter14 = ones(size(HealthDay14TexpOver25,1),1).*xpos+(rand(size(HealthDay14TexpOver25,1),1)-0.5)./10;
+% plot(XValuesScatter14,HealthDay14TexpOver25, 'o','MarkerFaceColor',cmaplines(1,:),'MarkerEdgeColor','none');
+% line([XValuesScatter1, XValuesScatter14]', [HealthDay1TexpOver25(:,1), HealthDay14TexpOver25(:,1)]', 'color', [0.30,0.30,0.30]);
+% 
+% %Naive
+% xpos = 3; xticksval = [xticksval xpos];
+% errorbar(xpos,mean(HealthDay1Naive(:,1)),std(HealthDay1Naive(:,1))/sqrt(size(HealthDay1Naive,1)),std(HealthDay1Naive(:,1))/sqrt(size(HealthDay1Naive,1)),'Color', 'k','Linewidth',1)
+% hold on;
+% bar(xpos,mean(HealthDay1Naive(:,1)),0.2, 'FaceColor', 'k', 'FaceAlpha',0.2, 'EdgeColor', 'w');
+% XValuesScatter1 = ones(size(HealthDay1Naive,1),1).*xpos+(rand(size(HealthDay1Naive,1),1)-0.5)./10;
+% plot(XValuesScatter1,HealthDay1Naive, 'o','MarkerFaceColor',cmaplines(1,:),'MarkerEdgeColor','none');
+% text(xpos+0.1,1.2, ['Naive'], 'FontSize', 10);
+% text(xpos+0.18,1.1, ['n = ' num2str(length(HealthDay1Naive))], 'FontSize', 10);
+% 
+% xpos = 3.5; xticksval = [xticksval xpos];
+% errorbar(xpos,mean(HealthDay14Naive(:,1)),std(HealthDay14Naive(:,1))/sqrt(size(HealthDay14Naive,1)),std(HealthDay14Naive(:,1))/sqrt(size(HealthDay14Naive,1)),'Color','k','Linewidth',1)
+% hold on;
+% bar(xpos,mean(HealthDay14Naive(:,1)),0.2, 'FaceColor', 'k', 'FaceAlpha',0.2, 'EdgeColor', 'w');
+% XValuesScatter14 = ones(size(HealthDay14Naive,1),1).*xpos+(rand(size(HealthDay14Naive,1),1)-0.5)./10;
+% plot(XValuesScatter14,HealthDay14Naive, 'o','MarkerFaceColor',cmaplines(1,:),'MarkerEdgeColor','none');
+% line([XValuesScatter1, XValuesScatter14]', [HealthDay1Naive(:,1), HealthDay14Naive(:,1)]', 'color', [0.30,0.30,0.30]);
+% 
+% xlim([-0.5 4.3])
+% xticks(xticksval)
+% xticklabels({'0'; '14';'0'; '14';'0'; '14'})
+% ylim([0 1.2])
+% yticks([0 1 2 3 4 5]/5)
+% ylabel('Health')
+% xlabel('Testing Time (Days)')
+% box off
+
+% ax = gca; ax.LineWidth = 1.5; ax.FontSize = 10;
+
+%%% PLOT HEALTH OVER T_exp, TIME POOLED FOR DAYS 15-28 %%%%%%%%%%%%%%%%%%%%
+% 
+% nexttile()
+% hold on;
+% 
+% HealthDay15to28Average = [mean(Deacclimation(1:28,15:28),2)]';
+% % HealthDay15to28SEM = [std(Health(:,15:28),0,2)./sqrt(size(Health(:,15:28),2))]';
+% HealthDay15to28SEM = [std(Deacclimation(1:28,15:28),0,2)]';
+% TimeHealth = 0:1:27;
+% TimeSEM = [TimeHealth fliplr(TimeHealth)];
+% 
+% inBetweenSEM2 = [HealthDay15to28Average + HealthDay15to28SEM fliplr(HealthDay15to28Average - HealthDay15to28SEM)];
+% for i=1:size(HealthDay15to28Average,1)
+%     fill(TimeSEM, inBetweenSEM2(i,:), cmaplines(i,:), 'FaceAlpha', 0.5, 'EdgeColor', 'w');
+%     if(i>3) % at that stage, animal1 contains NaN and has to be ignored
+%         fill(TimeSEM(2:end-1), inBetweenSEM2(i,2:end-1), cmaplines(i,:), 'FaceAlpha', 0.5, 'EdgeColor', 'w');
+%     end
+%     p1 = plot(TimeHealth, HealthDay15to28Average(i,:), 'Color', cmaplines(1,:), 'LineWidth', 2);
+% 
+% %     % insert curve fitting here
+%     [xData, yData] = prepareCurveData( TimeHealth, HealthDay15to28Average(i,:) );
+% %     [xData, yData] = prepareCurveData( TimeHealth, Health(:,14)' );
+%     ftSig = fittype( '1-b/(1+exp(-a*(x-c)))', 'independent', 'x', 'dependent', 'y' );
+%     optsSig = fitoptions( 'Method', 'NonlinearLeastSquares' );
+%     optsSig.StartPoint = [0.214375657872 0.92052185633948 0.262638919934413];
+%     [fitresult, gof] = fit( xData, yData, ftSig, optsSig );
+%     p2 = plot(xData,feval(fitresult,xData),'color',cmaplines(i+1,:),'LineWidth',2);
+% end
+% 
+% ylim([0 1])
+% xlabel('T_{RT} (days)')
+% ylabel({'Health average' ; 'over T=15-28'})
+% 
+% lgd = legend([p1 p2],'Raw data $\pm \ \sigma^2$','Fit: $1-\frac{b}{1+e^{-\frac{x-c}{a}}}$','Interpreter', 'Latex','FontSize',8);
+% lgd.Box = 'off';
+% lgd.Position(1) = lgd.Position(1) + 0.01;
+% 
+% box off;
+% ax = gca; ax.LineWidth = 1.5; ax.FontSize = 10;
+% exportgraphics(gcf, [figGeneral.Name '.jpg'])
+exportgraphics(gcf, [figGeneral.Name '.pdf'])
+
+% %%% PLOT HEALTH OVER TIME, EVERY T_RT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% figure(fig5)
+% clf(fig5)
+% tiledlayout(7,4)
+% ptot = []; ad = []; taud = []; ar = []; taur = []; of = [];
+% 
+% TimeHealth = 1:28;
+% fitresult = [];
+% for i=1:28
+%     nexttile
+%     ylim([0 1.2])
+%     hold on;
+%     p1 = plot(Deacclimation(i,:), 'color', [cmapturbo(floor(i/size(Deacclimation,1)*256),:),0.6], 'LineWidth',2);
+%     [xData, yData] = prepareCurveData( TimeHealth, Deacclimation(i,:) );
+%     [fitresult{i}, gof] = fit( xData, yData, ft, opts );
+%     ad = [ad 5]; taud = [taud fitresult{i}.taud]; ar = [ar fitresult{i}.ar]; taur = [taur fitresult{i}.taur]; of = [of fitresult{i}.of];
+%     p2 = plot(xData,feval(fitresult{i},xData),'color',cmapturbo(floor(256/size(Deacclimation,1)*i),:),'LineWidth',2);
+%     ptot = [ptot p1];
+%     text(15,1.1,num2str(i))
+% end
+% legendFittedCurves = num2str([1:1:i]');
+% 
+% lgd = legend(ptot, legendFittedCurves,'Box','off', 'Position', [0.7 0.083 0.5 0.85],'NumColumns',1, 'FontSize', 10);
+% lgd.Title.String = 'T_{RT} (days)';
+% 
+% dim = [.4 .01 .27 .08];
+% str = 'Time since return to cold (days)';
+% annotation('textbox',dim,'String',str,'FitBoxToText','on', 'LineStyle', 'none','BackgroundColor','white','FaceAlpha',0.0, 'FontSize', 16);
+% annotation('textarrow',[0.06 0.06], [0.55 0.55],'String','Health', 'TextRotation', 90, 'HeadStyle', 'none', 'FontSize', 16);
+
+% %%%DISPLAY PARAMETERS (Optional) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% fig6 = figure('Name', 'Fitting parameters', 'renderer', 'painters', 'Position', FigurePosition);
+% adecay = [ad';5;5]; taudecay = [taud';opts.Lower(3);opts.Upper(3)];
+% arecov = [ar';opts.Lower(1);opts.Upper(1)]; offset = [of';opts.Lower(2);opts.Upper(2)]; 
+% taurecov = [taur';opts.Lower(4);opts.Upper(4)];
+% adbound = [5;5]; taudbound = [opts.Lower(3);opts.Upper(3)];
+% arbound = [opts.Lower(1);opts.Upper(1)]; ofbound = [opts.Lower(2);opts.Upper(2)];
+% taurbound = [opts.Lower(4);opts.Upper(4)];
+% 
+% T_RT = [cellstr(num2str((1:28)')); 'min'; 'max'];
+% T = table(T_RT,adecay,taudecay,arecov,taurecov,offset);
+% disp(T)
+% 
+% figure(fig6)
+% clf(fig6)
+% fig6.WindowState = 'maximized';
+% tiledlayout(3,2)
+% nexttile
+% plot(ad); ylabel('a_{decay}'); box off; ax = gca; ax.LineWidth = 1.5; ax.FontSize = 16;;%ylim([0 5.2])
+% nexttile
+% plot(ar); ylabel('a_{recovery}'); box off; ax = gca; ax.LineWidth = 1.5; ax.FontSize = 16;;%ylim([0 5.2])
+% nexttile
+% plot(log(taud)); ylabel('log(\tau_{decay})'); box off; ax = gca; ax.LineWidth = 1.5; ax.FontSize = 16;
+% nexttile
+% plot(log(taur)); ylabel('log(\tau_{recovery})'); box off; ax = gca; ax.LineWidth = 1.5; ax.FontSize = 16;
+% nexttile
+% plot(log(offset)); ylabel('log(offset)'); box off; ax = gca; ax.LineWidth = 1.5; ax.FontSize = 16;
+% annotation('textbox',[.4 .001 .27 .08],'String','T_{RT} (days)','FitBoxToText','on', 'LineStyle', 'none','BackgroundColor','white','FaceAlpha',0.0, 'FontSize', 16);
+% 
+% exportgraphics(gcf,[ fig6.Name '.pdf'])
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+end
