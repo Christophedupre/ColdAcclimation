@@ -1,0 +1,172 @@
+function plotCstGrouped(CstData3D)
+
+figCst = figure('Name', 'Constant Temp', 'renderer', 'painters'); 
+figCst.WindowState = 'maximized';
+ncols = 4; nrows = 5;
+tiledlayout(nrows, ncols);
+load("cmaplist.mat");
+Time = linspace(0,length(CstData3D(:,1,1))-1,length(CstData3D(:,1,1)));
+p = [];
+
+cmaplines = colormap("lines");
+cmapjet = colormap("jet");
+cmapturbo = colormap('turbo');
+
+%%% PLOT EXPERIMENTAL DIAGRAM %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+nexttile(); hold on;
+StepDuration = [1:3:14];
+for i = 1:length(StepDuration)
+    plot([0-i/2 StepDuration(i) StepDuration(i) 42]+i/2, [12 12 4 4]+i/2, 'Color',cmapturbo(round(256/length(StepDuration)*i),:),'LineWidth',1);    
+end
+ax = gca;
+% ax.XLabel.String = 'Time (Days)'; ax.YLabel.String = 'Train. Temp (C)';
+ax.YLim = [0 38]; ax.XLim = [0 42];
+ax.XTick = []; ax.YTick = [];
+
+nexttile(); hold on;
+StepTemperature = [4:3:20];
+for i = 1:length(StepDuration)
+    plot([0-i/2 10 10 42]+i/2, [StepTemperature(i) StepTemperature(i) 4 4]+i/2, 'Color',cmapturbo(round(256/length(StepDuration)*i),:),'LineWidth',1);    
+end
+ax = gca;
+ax.XLabel.String = 'Time (Days)'; ax.YLabel.String = 'T (C)';
+ax.YLim = [0 38]; ax.XLim = [0 42];
+yyaxis right
+ax = gca;
+ax.YLim = [0 1]; ax.YColor = [0 0 0]; ax.YLabel.String = '\theta';
+
+nexttile(); hold on;
+StepDuration = [1:3:14];
+for i = 1:length(StepDuration)
+    plot([0-i/2 StepDuration(i) StepDuration(i) 42]+i/2, [28 28 4 4]+i/2, 'Color',cmapturbo(round(256/length(StepDuration)*i),:),'LineWidth',1);    
+end
+ax = gca;
+% ax.XLabel.String = 'Time (Days)'; %ax.YLabel.String = 'Temperature (C)';
+ax.YLim = [0 38]; ax.XLim = [0 42];
+ax.XTick = []; ax.YTick = [];
+
+nexttile(); hold on;
+StepTemperature = [22:3:34];
+for i = 1:length(StepDuration)
+    plot([0-i/2 10 10 42]+i/2, [StepTemperature(i) StepTemperature(i) 4 4]+i/2, 'Color',cmapturbo(round(256/length(StepDuration)*i),:),'LineWidth',1);    
+end
+ax = gca;
+ax.XLabel.String = 'Time (Days)'; ax.YLabel.String = 'T (C)';
+ax.YLim = [0 38]; ax.XLim = [0 42];
+yyaxis right
+ax = gca;
+ax.YLim = [0 1]; ax.YColor = [0 0 0]; ax.YLabel.String = '\theta';
+
+
+
+%%% PLOT ALL TRACES, GROUPED BY TRAINING TEMPERATURE %%%%%%%%%%%%%%%%%%%%%%
+survival = []; %Store survival values for separate plot
+% Labels = [{'A'} {'B'} {'C'} {'D'} {'E'} {'F'} {'G'} {'H'} {'I'} {'J'} {'K'} {'L'} {'M'} {'N'} {'O'} {'P'}];
+Labels = ['BCDEFGHIJKLMNOPQ'];
+for i = 1:size(CstData3D,3) % Over all training temperatures
+    nexttile();
+    h = heatmap(squeeze(CstData3D(:,:,i))');
+    h.ColorbarVisible = 'off';
+    h.FontSize = 8;
+    % h.Title = [Labels(i) '. \theta = ' num2str(i*2+2) ' ^oC'];
+    h.Title = ['Health at T = ' num2str(i*2+2) ' ^oC'];
+    h.XDisplayLabels(:) = {''}; h.YDisplayLabels(:) = {''};
+    survival = [survival sum(CstData3D(:,:,i)>0.1,2);];
+    if i == size(CstData3D,3)
+      h.XLabel = 'Testing Time (Days)'; h.YLabel = 'TD';
+      h.XDisplayLabels([1 5 10 15 20 25]) = {'0', '5', '10', '15', '20', '25'};
+      h.YDisplayLabels([1 6 11 15]) = {'0', '5', '10', '14'};
+    end    
+end
+
+%optional
+% colormap('sky');
+% colormap(flipud(colormap('jet')));
+% colormap(cmaplist.cmapBone);
+% colormap(flipud(cmaplist.cmapBone));
+colormap(cmaplist.cmapRedBlue1);
+% colormap(cmaplist.cmapRedBlue2);
+% colormap(cmaplist.cmapRedBlue3);
+
+f = gcf;
+% exportgraphics(f, [f.Name '.jpg'])
+exportgraphics(f, [f.Name '.pdf']);
+clear A ax f fi h i j M ncols nrows p p1 s sd Time
+
+figCst.Position(3) = figCst.Position(3)*0.6;
+f = gcf;
+exportgraphics(f, [f.Name '.pdf']);
+
+FigCstAnalysis = figure('Name','Training Analysis','WindowState','maximized');
+tiledlayout(4,5);
+%%% PLOT EFFECT OF TRAINING %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% As heatmap
+nexttile();
+h = heatmap(squeeze(CstData3D(1,:,:))');
+h.ColorbarVisible = 'off'; h.XLabel = 'Training Duration'; h.YLabel = 'Training Temperature';
+h.XDisplayLabels(:) = {''}; h.YDisplayLabels(:) = {''}; h.FontSize = 8;
+h.XDisplayLabels([1 5 10 15]) = {'0', '5', '10', '15'};
+h.YDisplayLabels([1 6 11 16]) = {'4', '14', '24', '34'};
+h.Title = 'R. Health at end of training';
+
+%%% PLOT TRAINING EFFICIENCY %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Heatmap of training efficiency
+nexttile()
+hold off;
+h = heatmap(squeeze(mean(CstData3D,1))');
+h.ColorbarVisible = 'off'; h.XLabel = 'Training Duration'; h.YLabel = 'Training Temperature';
+h.XDisplayLabels(:) = {''}; h.YDisplayLabels(:) = {''}; h.FontSize = 8;
+h.XDisplayLabels([1 5 10 15]) = {'0', '5', '10', '15'};
+h.YDisplayLabels([1 6 11 16]) = {'4', '14', '24', '34'};
+h.Title = 'S. Average Health during Testing';
+
+% %%% PLOT SURVIVAL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% nexttile()
+% C = {}; Ci = [];
+% R = 16;
+% h = heatmap(survival(:,1:R)');
+% h.ColorbarVisible = 'off'; h.XLabel = 'T (Days)'; h.YLabel = '\theta';
+% h.FontSize = 8;
+% h.Title = ['T. Survival'];
+% h.XDisplayLabels(:) = {''}; h.YDisplayLabels(:) = {''};
+% for i=1:2:R 
+%     C = [C {num2str(i*2+2)}]; 
+%     Ci = [Ci i];
+% end
+% h.YDisplayLabels(Ci) = C;
+% h.XDisplayLabels([1 5 10 15 20 25]) = {'0', '5', '10', '15', '20', '25'};
+
+% %%% PLOT SURVIVAL CURVES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% fig2 = figure('Name','Constant Temp (survival)', 'WindowState','maximized');
+% ncols = 5; nrows = 4;
+% tiledlayout(nrows, ncols)
+% 
+% 
+% 
+% % Plot experimental diagram
+% nexttile()
+% plot([linspace(0,14,15) 14], [linspace(12,12,15) 4],'color',[cmaplines(1,:) 0.8], 'LineWidth',2); hold on;
+% plot(linspace(14,28,15), linspace(4,4,15),'color',[cmaplines(2,:) 0.8], 'LineWidth',2);
+% xlim([0 28]); xticks([0 14 28]); xticklabels({'0';'D';'D+28'}); ylabel(['T (' char(176) 'C)']); ylim([0 20])
+% yticks([0 12]); yticklabels({'0';'\theta'})
+% % xlabel('Time (days)');
+% ax = gca;
+% text(mean(ax.XLim), -0.5*mean(ax.YLim) ,'T (days)', 'HorizontalAlignment','center');
+% box off; ax = gca; ax.LineWidth = 1.5; ax.FontSize = 10;
+% 
+% for i = 1:size(CstData3D,3) % Over all training temperatures
+%     nexttile();
+%     plot(survival(:,i),'Color',[0 0 0]);
+%     ax = gca; ax.XLim = [0 29]; ax.YLim = [0 15]; ax.Box = 'off'; ax.XTick = [0:10:29];
+%     ax.XLabel.String = 'Time (Days)'; ax.YLabel.String = 'Survival';    
+%     ax.Title.String = ['\theta = ' num2str(i*2+2) ' ^oC'];
+% end
+
+colormap(cmaplist.cmapRedBlue1);
+FigCstAnalysis = gcf;
+FigCstAnalysis.OuterPosition(3) = FigCstAnalysis.OuterPosition(3)./2;
+f = gcf;
+% exportgraphics(f, [f.Name '.jpg'])
+exportgraphics(f, [f.Name '.pdf']);
+end
